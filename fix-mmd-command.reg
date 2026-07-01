@@ -1,0 +1,4 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Classes\mmdfile\shell\Convert to PNG\command]
+@="cmd /k \"C:\\Users\\E153773\\mermaid-tool\\mmd-to-png.bat\" \"%1\""
