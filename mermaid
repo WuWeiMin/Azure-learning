@@ -18,3 +18,7 @@ reg query "HKCU\Software\Classes\mmdfile\shell\Convert to PNG\command"
 
 reg add "HKCU\Software\Classes\mmdfile\shell\Convert to PNG\command" /ve /d "cmd /k \"%USERPROFILE%\mermaid-tool\mmd-to-png.bat\" \"%%1\"" /f
 
+
+reg add "HKCU\Software\Classes\mmdfile\shell\Convert to PNG\command" /ve /d "cmd /k \"C:\Users\E153773\mermaid-tool\mmd-to-png.bat\" \"%1\"" /f
+
+
