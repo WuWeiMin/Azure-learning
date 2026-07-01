@@ -1,0 +1,44 @@
+flowchart TB
+    Button["🔘 Ribbon Button / Command<br/>（一个按钮）"]
+
+    Button --> Command["⚙️ Command<br/>定义点击后执行的 Action（通常调JS函数）"]
+    Button --> DR["👁️ Display Rule<br/>决定按钮是否渲染/可见"]
+    Button --> ER["🖱️ Enable Rule<br/>决定按钮是否可点击"]
+
+    DR --> DR_OOB["内置规则（OOB）<br/>ValueRule / FormStateRule<br/>RecordPrivilegeRule / PageRule 等"]
+    DR --> DR_CR["CustomRule<br/>调用自定义 JS 函数<br/>返回 boolean / Promise&lt;boolean&gt;"]
+
+    ER --> ER_OOB["内置规则（OOB）<br/>ValueRule / SelectionCountRule<br/>EntityPropertyRule 等"]
+    ER --> ER_CR["CustomRule<br/>调用自定义 JS 函数<br/>返回 boolean / Promise&lt;boolean&gt;"]
+
+    DR_OOB --> DR_Result{"求值结果"}
+    DR_CR --> DR_Result
+    DR_Result -->|"true"| DR_Show["✅ 按钮渲染出来<br/>进入 Enable Rule 判断"]
+    DR_Result -->|"false"| DR_Hide["❌ 按钮完全隐藏<br/>不占位，不再判断 Enable Rule"]
+
+    ER_OOB --> ER_Result{"求值结果"}
+    ER_CR --> ER_Result
+    ER_Result -->|"true"| ER_Enable["✅ 按钮可点击"]
+    ER_Result -->|"false"| ER_Disable["⚠️ 按钮灰显/不可点击<br/>（仍然可见）"]
+
+    DR_Show --> ER
+
+    style Button fill:#ffffff,stroke:#333333,stroke-width:2px,color:#000000
+    style Command fill:#f5f5f5,stroke:#616161,color:#000000
+
+    style DR fill:#1976d2,stroke:#0d47a1,stroke-width:2px,color:#ffffff
+    style ER fill:#f57c00,stroke:#bf360c,stroke-width:2px,color:#ffffff
+
+    style DR_OOB fill:#bbdefb,stroke:#1976d2,color:#000000
+    style ER_OOB fill:#ffe0b2,stroke:#f57c00,color:#000000
+
+    style DR_CR fill:#5e35b1,stroke:#311b92,stroke-width:2px,color:#ffffff
+    style ER_CR fill:#5e35b1,stroke:#311b92,stroke-width:2px,color:#ffffff
+
+    style DR_Result fill:#eeeeee,stroke:#616161,color:#000000
+    style ER_Result fill:#eeeeee,stroke:#616161,color:#000000
+
+    style DR_Hide fill:#c62828,stroke:#7f0000,stroke-width:2px,color:#ffffff
+    style ER_Disable fill:#fbc02d,stroke:#8d6e00,stroke-width:2px,color:#000000
+    style DR_Show fill:#2e7d32,stroke:#1b5e20,stroke-width:2px,color:#ffffff
+    style ER_Enable fill:#2e7d32,stroke:#1b5e20,stroke-width:2px,color:#ffffff
