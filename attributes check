@@ -1,3 +1,4 @@
+using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 
 public bool AttributeExists(
@@ -7,17 +8,15 @@ public bool AttributeExists(
 {
     try
     {
-        var request = new RetrieveAttributeRequest
+        service.Execute(new RetrieveAttributeRequest
         {
             EntityLogicalName = entityLogicalName,
             LogicalName = attributeLogicalName
-        };
-
-        service.Execute(request);
+        });
 
         return true;
     }
-    catch (Exception)
+    catch (FaultException<OrganizationServiceFault>)
     {
         return false;
     }
