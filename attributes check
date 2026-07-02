@@ -46,3 +46,56 @@ public static string[] GetLookupTargetEntities(
 
     return lookupMetadata.Targets;
 }
+
+using System;
+using System.ServiceModel;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
+
+public static class MetadataHelper
+{
+    /// <summary>
+    /// 根据实体名称和字段Logical Name获取字段Display Name
+    /// </summary>
+    public static string GetAttributeDisplayName(
+        IOrganizationService service,
+        string entityLogicalName,
+        string attributeLogicalName)
+    {
+        if (service == null)
+            throw new ArgumentNullException("service");
+
+        try
+        {
+            var request = new RetrieveAttributeRequest
+            {
+                EntityLogicalName = entityLogicalName,
+                LogicalName = attributeLogicalName
+            };
+
+            var response = (RetrieveAttributeResponse)service.Execute(request);
+
+            AttributeMetadata metadata = response.AttributeMetadata;
+
+            if (metadata.DisplayName == null ||
+                metadata.DisplayName.UserLocalizedLabel == null)
+            {
+                // 有些系统字段可能没有DisplayName
+                return metadata.LogicalName;
+            }
+
+            return metadata.DisplayName.UserLocalizedLabel.Label;
+        }
+        catch (FaultException<OrganizationServiceFault> ex)
+        {
+            throw new InvalidPluginExecutionException(
+                string.Format(
+                    "Cannot retrieve metadata of attribute '{0}' from entity '{1}'. {2}",
+                    attributeLogicalName,
+                    entityLogicalName,
+                    ex.Message),
+                ex);
+        }
+    }
+}
