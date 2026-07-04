@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Lucy" constructor="ConfigurableLookup" version="1.1.0"
+           display-name-key="Configurable Lookup"
+           description-key="Multi-source lookup over configurable Web API queries, native lookup UX"
+           control-type="virtual">
+
+    <external-service-usage enabled="false" />
+
+    <!-- ========== 绑定属性(会写入实体字段)========== -->
+
+    <!-- 返回值:控件所挂的文本字段本身 -->
+    <property name="boundValue"
+              display-name-key="返回值字段"
+              description-key="存储选中项的返回值(GUID / LogicalName 等)"
+              of-type="SingleLine.Text" usage="bound" required="true" />
+
+    <!-- 显示值:可选,持久化后视图/报表可读 -->
+    <property name="boundDisplay"
+              display-name-key="显示值字段(可选)"
+              description-key="存储选中项的显示名,便于视图和报表阅读"
+              of-type="SingleLine.Text" usage="bound" required="false" />
+
+    <!-- 来源标记:可选,记录该值选自哪个数据源(配置中的 key) -->
+    <property name="boundSourceKey"
+              display-name-key="来源标记字段(可选)"
+              description-key="存储选中项来自哪个数据源(数据源配置中的 key),多数据源时强烈建议绑定"
+              of-type="SingleLine.Text" usage="bound" required="false" />
+
+    <!-- ========== 静态配置属性(不产生字段)========== -->
+
+    <!-- 二选一(A):内联 JSON,适合单表单独立配置 -->
+    <property name="sourcesJson"
+              display-name-key="数据源配置 JSON(与环境变量二选一)"
+              description-key="直接粘贴数据源 JSON 数组;填了此项则忽略环境变量"
+              of-type="Multiple" usage="input" required="false" />
+
+    <!-- 二选一(B):环境变量 schema name,适合集中配置 -->
+    <property name="sourcesVariableName"
+              display-name-key="数据源环境变量名(与 JSON 二选一)"
+              description-key="JSON 类型环境变量的 schema name,如 lucy_LookupSources;修改变量值即时生效,无需发布表单"
+              of-type="SingleLine.Text" usage="input" required="false" />
+
+    <!-- 默认选中的数据源 key(仅初始态,不限制切换) -->
+    <property name="defaultSourceKey"
+              display-name-key="默认数据源(填配置中的 key)"
+              description-key="控件打开时默认选中的数据源 key,如 account;用户仍可切换到其他数据源"
+              of-type="SingleLine.Text" usage="input" required="false" />
+
+    <!-- 本表单允许使用的数据源 key,逗号分隔;留空 = 全部 -->
+    <property name="allowedSources"
+              display-name-key="允许的数据源 key(逗号分隔,留空=全部)"
+              description-key="从共享配置中筛选本表单可用的数据源,如 account,contact"
+              of-type="SingleLine.Text" usage="input" required="false" />
+
+    <resources>
+      <code path="index.ts" order="1" />
+      <platform-library name="React" version="16.14.0" />
+      <platform-library name="Fluent" version="8.29.0" />
+    </resources>
+
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>

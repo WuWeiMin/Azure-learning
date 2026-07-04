@@ -1,0 +1,31 @@
+[
+  {
+    "key": "account",
+    "label": "客户",
+    "query": "/api/data/v9.2/accounts?$select=accountid,name,accountnumber&$filter=contains(name,'{search}')&$top=15&$orderby=name",
+    "resolveQuery": "/api/data/v9.2/accounts({value})?$select=name",
+    "valueField": "accountid",
+    "displayField": "name",
+    "secondaryField": "accountnumber",
+    "searchMode": "server"
+  },
+  {
+    "key": "contact",
+    "label": "联系人",
+    "query": "/api/data/v9.2/contacts?$select=contactid,fullname,emailaddress1&$filter=contains(fullname,'{search}')&$top=15&$orderby=fullname",
+    "resolveQuery": "/api/data/v9.2/contacts({value})?$select=fullname",
+    "valueField": "contactid",
+    "displayField": "fullname",
+    "secondaryField": "emailaddress1",
+    "searchMode": "server"
+  },
+  {
+    "key": "entity",
+    "label": "实体元数据",
+    "query": "/api/data/v9.2/EntityDefinitions?$select=LogicalName,ObjectTypeCode,DisplayName&$filter=IsValidForAdvancedFind eq true and IsIntersect eq false",
+    "valueField": "LogicalName",
+    "displayField": "DisplayName.UserLocalizedLabel.Label",
+    "secondaryField": "ObjectTypeCode",
+    "searchMode": "client"
+  }
+]
