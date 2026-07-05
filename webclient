@@ -1,6 +1,0 @@
-var clientOptions = new ServiceBusClientOptions
-{
-    TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets
-};
-
-ServiceBusClient client = new ServiceBusClient(connectionString, clientOptions);
