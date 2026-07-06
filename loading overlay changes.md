@@ -2,7 +2,7 @@
 
 ## Change 1: HTML — Add overlay div and spinner animation
 
-**File:** `aia_/html/PaymentReconciliationDialog.html`
+**File:** `_/html/PaymentReconciliationDialog.html`
 
 **Where:** Inside `<body>`, paste this block **before** the `<div class="title-bar">` line.
 
@@ -50,7 +50,7 @@
 
 ## Change 2: JS — Add showLoading and hideLoading functions
 
-**File:** `aia_/js/PaymentReconciliationLogic.js`
+**File:** `_/js/PaymentReconciliationLogic.js`
 
 **Where:** Inside the `(function () {` block, paste these two functions
 **before** the `function onSearch()` line.
@@ -71,7 +71,7 @@ function hideLoading() {
 
 ## Change 3: JS — Update onSearch() to show and hide the overlay
 
-**File:** `aia_/js/PaymentReconciliationLogic.js`
+**File:** `_/js/PaymentReconciliationLogic.js`
 
 **Where:** Replace the entire `function onSearch() { ... }` block with the version below.
 
@@ -117,6 +117,6 @@ function onSearch() {
 
 | File | What changed |
 |---|---|
-| `aia_/html/PaymentReconciliationDialog.html` | Added overlay div + spinner CSS animation |
-| `aia_/js/PaymentReconciliationLogic.js` | Added showLoading / hideLoading functions |
-| `aia_/js/PaymentReconciliationLogic.js` | Replaced onSearch() with overlay-aware version |
+| `_/html/PaymentReconciliationDialog.html` | Added overlay div + spinner CSS animation |
+| `_/js/PaymentReconciliationLogic.js` | Added showLoading / hideLoading functions |
+| `_/js/PaymentReconciliationLogic.js` | Replaced onSearch() with overlay-aware version |
