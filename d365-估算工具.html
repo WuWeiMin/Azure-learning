@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamics 365 工作量估算单</title>
+<style>
+  :root{
+    --bg:#EDEFF4; --surface:#FFFFFF; --ink:#1C2130; --muted:#6E7480;
+    --accent:#3D46C2; --accent-soft:#E9EBFB; --readout:#0E8A7B; --readout-bg:#0F1B22;
+    --line:#D8DBE3; --danger:#B4443C;
+    --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+    --sans:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+
+  header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--ink);padding-bottom:12px;margin-bottom:20px;flex-wrap:wrap;gap:6px}
+  header h1{font-size:21px;font-weight:700;letter-spacing:.5px}
+  header h1 .en{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--muted);display:block;letter-spacing:1.5px;text-transform:uppercase}
+  .sheet-no{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+  .layout{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+  @media(max-width:860px){.layout{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .card h2{font-size:13px;font-weight:700;letter-spacing:1px;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .card h2 .tag{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400}
+
+  /* 清单表 */
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:11px;color:var(--muted);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:7px 10px;border-bottom:1px solid #EEF0F4;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  select,input[type=number],input[type=text]{
+    font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);
+    border-radius:6px;background:#FAFBFD;color:var(--ink);width:100%}
+  input[type=number]{font-family:var(--mono);text-align:right}
+  select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+  .num{font-family:var(--mono);text-align:right;white-space:nowrap}
+  .row-days{font-weight:600}
+  .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px}
+  .del:hover{color:var(--danger);background:#FBEDEC}
+  .table-scroll{overflow-x:auto}
+  #itemsTable{min-width:640px}
+
+  .add-bar{padding:12px 16px;border-top:1px dashed var(--line);display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+  .btn:hover{background:var(--accent);border-color:var(--accent)}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.ghost:hover{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+  /* 人员系数 */
+  .profile-block{padding:14px 16px}
+  .profile-block label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+  .matrix{width:100%;margin-top:12px;font-size:12px}
+  .matrix th{font-size:11px;padding:5px 6px}
+  .matrix td{padding:4px 6px;border-bottom:1px solid #F2F3F7}
+  .matrix input{padding:4px 5px;font-size:12px}
+  .hint{font-size:11px;color:var(--muted);padding:10px 16px 14px;line-height:1.6}
+
+  .buffer-block{padding:14px 16px;display:grid;grid-template-columns:1fr 90px;gap:8px 10px;align-items:center}
+  .buffer-block label{font-size:13px}
+  .buffer-block .sub{font-size:11px;color:var(--muted);display:block}
+
+  /* 读数面板(签名元素) */
+  .readout{background:var(--readout-bg);color:#E7F5F2;border-radius:10px;padding:18px;position:sticky;top:14px}
+  .readout .lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:#7FA8A0;text-transform:uppercase}
+  .readout .big{font-family:var(--mono);font-size:44px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;color:#5EE6C9}
+  .readout .big small{font-size:15px;color:#8FB8B0;font-weight:400;margin-left:4px}
+  .readout .weeks{font-family:var(--mono);font-size:12px;color:#8FB8B0;margin-top:2px}
+  .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:16px 0 8px;background:#1D2E36}
+  .bar div{height:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#B8CFC9}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+  .lines{margin-top:16px;border-top:1px solid #24363F;padding-top:10px;font-size:12.5px}
+  .lines div{display:flex;justify-content:space-between;padding:3px 0;color:#B8CFC9}
+  .lines .v{font-family:var(--mono);color:#E7F5F2}
+  .lines .total{border-top:1px solid #24363F;margin-top:6px;padding-top:8px;font-weight:600;color:#fff}
+  .lines .total .v{color:#5EE6C9;font-size:15px}
+  .factor-badge{display:inline-block;font-family:var(--mono);font-size:11px;background:#1D2E36;color:#5EE6C9;border-radius:5px;padding:2px 8px;margin-top:6px}
+
+  .stack{display:flex;flex-direction:column;gap:18px}
+  .empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>工作量估算单<span class="en">Dynamics 365 Effort Estimation Sheet</span></h1>
+    <span class="sheet-no" id="sheetDate"></span>
+  </header>
+
+  <div class="layout">
+    <div class="stack">
+      <!-- 组件清单 -->
+      <div class="card">
+        <h2>需求组件清单 <span class="tag">BASE = 开发 + 单元测试</span></h2>
+        <div class="table-scroll">
+        <table id="itemsTable">
+          <thead><tr>
+            <th style="width:170px">组件类型</th>
+            <th style="width:110px">复杂度</th>
+            <th style="width:64px">数量</th>
+            <th style="width:80px">基准/个</th>
+            <th>备注</th>
+            <th style="width:86px" class="num">调整后(天)</th>
+            <th style="width:40px"></th>
+          </tr></thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+        </div>
+        <div id="emptyMsg" class="empty">还没有条目 —— 点击下方"添加组件"开始估算</div>
+        <div class="add-bar">
+          <button class="btn" onclick="addItem()">+ 添加组件</button>
+          <button class="btn ghost" onclick="loadSample()">载入示例</button>
+          <button class="btn ghost" onclick="clearAll()">清空</button>
+        </div>
+      </div>
+
+      <!-- 人员系数 -->
+      <div class="card">
+        <h2>人员因素 <span class="tag">PROFILE × COMPONENT</span></h2>
+        <div class="profile-block">
+          <label for="profileSel">开发人员画像(系数会按组件类型分别生效,可手动微调)</label>
+          <select id="profileSel" onchange="applyProfile()"></select>
+          <table class="matrix">
+            <thead><tr>
+              <th>表单/JS</th><th>插件</th><th>Action/API</th><th>Flow/WF</th><th>集成</th>
+            </tr></thead>
+            <tbody><tr id="matrixRow"></tr></tbody>
+          </table>
+        </div>
+        <div class="hint">
+          系数 &lt; 1 表示比基准快,&gt; 1 表示更慢。逻辑:C# 熟手写插件接近基准,但表单 JS、Power Automate 这类平台配置类工作缺经验,系数偏高;反之 D365 功能顾问型选手配 Flow 快、写插件慢。
+        </div>
+      </div>
+
+      <!-- Buffer -->
+      <div class="card">
+        <h2>项目级附加 <span class="tag">BUFFERS</span></h2>
+        <div class="buffer-block">
+          <label>解决方案管理 / 部署<span class="sub">环境迁移、managed solution,按小计 %</span></label>
+          <input type="number" id="bufDeploy" value="8" min="0" step="1" onchange="calc()">
+          <label>联调 &amp; 修 Bug buffer<span class="sub">SIT 前后返工,按小计 %</span></label>
+          <input type="number" id="bufBug" value="15" min="0" step="1" onchange="calc()">
+          <label>技术文档(固定天数)<span class="sub">设计文档 / 部署手册</span></label>
+          <input type="number" id="bufDoc" value="1" min="0" step="0.5" onchange="calc()">
+        </div>
+      </div>
+    </div>
+
+    <!-- 读数面板 -->
+    <aside class="readout">
+      <div class="lbl">Estimated Effort · 总工作量</div>
+      <div class="big" id="totalDays">0<small>人天</small></div>
+      <div class="weeks" id="totalWeeks">≈ 0 周(按 5 天/周)</div>
+      <div class="factor-badge" id="factorBadge">画像:—</div>
+      <div class="bar" id="compBar"></div>
+      <div class="legend" id="compLegend"></div>
+      <div class="lines">
+        <div><span>组件小计(基准)</span><span class="v" id="rawSub">0</span></div>
+        <div><span>人员系数调整后</span><span class="v" id="adjSub">0</span></div>
+        <div><span>部署 / 解决方案</span><span class="v" id="deployV">0</span></div>
+        <div><span>联调 buffer</span><span class="v" id="bugV">0</span></div>
+        <div><span>文档</span><span class="v" id="docV">0</span></div>
+        <div class="total"><span>合计</span><span class="v" id="grandV">0 人天</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+// ---------- 基准数据 ----------
+const TYPES = {
+  form:    {name:"表单 (Form)",        cat:"form", base:{S:0.5, M:1.5, L:3}},
+  plugin:  {name:"插件 (Plugin)",      cat:"plugin", base:{S:1.5, M:3, L:6}},
+  action:  {name:"Action",            cat:"action", base:{S:1.5, M:3, L:5}},
+  capi:    {name:"Custom API",        cat:"action", base:{S:2, M:3.5, L:5.5}},
+  flow:    {name:"Workflow / Flow",   cat:"flow", base:{S:0.75, M:2, L:4}},
+  webapi:  {name:"Web API 集成",      cat:"integ", base:{S:2.5, M:4, L:7}},
+  pcf:     {name:"PCF 控件",          cat:"form", base:{S:3, M:5, L:9}}
+};
+const COMPLX = {S:"简单", M:"中等", L:"复杂"};
+const CATS = {form:"表单/JS", plugin:"插件", action:"Action/API", flow:"Flow/WF", integ:"集成"};
+const CAT_COLORS = {form:"#5EE6C9", plugin:"#4C8DF6", action:"#C9A24B", flow:"#B57EDC", integ:"#E0705F"};
+
+// 人员画像:每个组件类别的耗时系数
+const PROFILES = {
+  d365pro: {name:"D365 全栈熟手(3年+)", f:{form:0.8, plugin:0.8, action:0.8, flow:0.8, integ:0.9}},
+  csharp:  {name:"C# 熟手 / D365 新手", f:{form:1.4, plugin:1.0, action:1.1, flow:1.5, integ:0.9}},
+  frontend:{name:"前端熟手 / D365 新手", f:{form:1.0, plugin:1.7, action:1.6, flow:1.3, integ:1.4}},
+  consult: {name:"功能顾问型(低代码强)", f:{form:0.9, plugin:1.8, action:1.7, flow:0.8, integ:1.6}},
+  junior:  {name:"初级开发(<1年)", f:{form:1.6, plugin:1.8, action:1.8, flow:1.5, integ:1.9}},
+  standard:{name:"标准基准(不调整)", f:{form:1, plugin:1, action:1, flow:1, integ:1}}
+};
+
+let items = [];
+let factors = {...PROFILES.d365pro.f};
+
+// ---------- 初始化 ----------
+const profileSel = document.getElementById("profileSel");
+Object.entries(PROFILES).forEach(([k,p])=>{
+  const o = document.createElement("option"); o.value=k; o.textContent=p.name;
+  profileSel.appendChild(o);
+});
+document.getElementById("sheetDate").textContent = "EST-" + new Date().toISOString().slice(0,10).replaceAll("-","");
+renderMatrix();
+
+function renderMatrix(){
+  const row = document.getElementById("matrixRow");
+  row.innerHTML = "";
+  Object.keys(CATS).forEach(cat=>{
+    const td = document.createElement("td");
+    const inp = document.createElement("input");
+    inp.type="number"; inp.step="0.1"; inp.min="0.1"; inp.value=factors[cat];
+    inp.oninput = ()=>{ factors[cat]=parseFloat(inp.value)||1; calc(); };
+    td.appendChild(inp); row.appendChild(td);
+  });
+}
+function applyProfile(){
+  factors = {...PROFILES[profileSel.value].f};
+  renderMatrix(); calc();
+}
+
+// ---------- 条目 ----------
+function addItem(preset){
+  items.push(preset || {type:"form", cx:"M", qty:1, note:""});
+  renderItems();
+}
+function removeItem(i){ items.splice(i,1); renderItems(); }
+function clearAll(){ if(items.length===0 || confirm("清空所有条目?")){ items=[]; renderItems(); } }
+function loadSample(){
+  items = [
+    {type:"form", cx:"M", qty:3, note:"客户/订单/服务单表单联动"},
+    {type:"form", cx:"L", qty:1, note:"报价单,含 Web API 动态过滤"},
+    {type:"plugin", cx:"M", qty:2, note:"订单校验 + 编号生成"},
+    {type:"plugin", cx:"L", qty:1, note:"跨实体级联,含 Pre/Post Image"},
+    {type:"capi", cx:"M", qty:1, note:"批量分配接口"},
+    {type:"flow", cx:"M", qty:2, note:"审批流 + 邮件通知"},
+    {type:"webapi", cx:"M", qty:1, note:"对接外部 ERP,OAuth"}
+  ];
+  renderItems();
+}
+
+function renderItems(){
+  const tb = document.getElementById("itemsBody");
+  tb.innerHTML = "";
+  document.getElementById("emptyMsg").style.display = items.length ? "none":"block";
+  items.forEach((it,i)=>{
+    const t = TYPES[it.type];
+    const tr = document.createElement("tr");
+
+    // 类型
+    const tdType = document.createElement("td");
+    const selT = document.createElement("select");
+    Object.entries(TYPES).forEach(([k,v])=>{
+      const o=document.createElement("option");o.value=k;o.textContent=v.name;
+      if(k===it.type)o.selected=true; selT.appendChild(o);
+    });
+    selT.onchange=()=>{it.type=selT.value; renderItems();};
+    tdType.appendChild(selT);
+
+    // 复杂度
+    const tdCx = document.createElement("td");
+    const selC = document.createElement("select");
+    Object.entries(COMPLX).forEach(([k,v])=>{
+      const o=document.createElement("option");o.value=k;o.textContent=v;
+      if(k===it.cx)o.selected=true; selC.appendChild(o);
+    });
+    selC.onchange=()=>{it.cx=selC.value; renderItems();};
+    tdCx.appendChild(selC);
+
+    // 数量
+    const tdQ = document.createElement("td");
+    const inQ = document.createElement("input");
+    inQ.type="number"; inQ.min="1"; inQ.value=it.qty;
+    inQ.oninput=()=>{it.qty=parseInt(inQ.value)||1; calc();};
+    tdQ.appendChild(inQ);
+
+    // 基准
+    const tdB = document.createElement("td");
+    tdB.className="num"; tdB.textContent = t.base[it.cx].toFixed(1);
+
+    // 备注
+    const tdN = document.createElement("td");
+    const inN = document.createElement("input");
+    inN.type="text"; inN.placeholder="备注"; inN.value=it.note;
+    inN.oninput=()=>{it.note=inN.value;};
+    tdN.appendChild(inN);
+
+    // 调整后
+    const tdD = document.createElement("td");
+    tdD.className="num row-days"; tdD.dataset.days=i;
+
+    // 删除
+    const tdX = document.createElement("td");
+    const bx = document.createElement("button");
+    bx.className="del"; bx.textContent="×"; bx.title="删除";
+    bx.onclick=()=>removeItem(i);
+    tdX.appendChild(bx);
+
+    tr.append(tdType,tdCx,tdQ,tdB,tdN,tdD,tdX);
+    tb.appendChild(tr);
+  });
+  calc();
+}
+
+// ---------- 计算 ----------
+function calc(){
+  let raw=0, adj=0;
+  const catTotals = {form:0,plugin:0,action:0,flow:0,integ:0};
+  items.forEach((it,i)=>{
+    const t = TYPES[it.type];
+    const base = t.base[it.cx]*it.qty;
+    const a = base * (factors[t.cat]||1);
+    raw+=base; adj+=a; catTotals[t.cat]+=a;
+    const cell = document.querySelector(`[data-days="${i}"]`);
+    if(cell) cell.textContent = a.toFixed(1);
+  });
+  const dep = adj * (parseFloat(document.getElementById("bufDeploy").value)||0)/100;
+  const bug = adj * (parseFloat(document.getElementById("bufBug").value)||0)/100;
+  const doc = parseFloat(document.getElementById("bufDoc").value)||0;
+  const grand = adj+dep+bug+doc;
+
+  const fmt = n=>n.toFixed(1).replace(/\.0$/,"");
+  document.getElementById("rawSub").textContent = fmt(raw);
+  document.getElementById("adjSub").textContent = fmt(adj);
+  document.getElementById("deployV").textContent = fmt(dep);
+  document.getElementById("bugV").textContent = fmt(bug);
+  document.getElementById("docV").textContent = fmt(doc);
+  document.getElementById("grandV").textContent = fmt(grand)+" 人天";
+  document.getElementById("totalDays").innerHTML = fmt(grand)+"<small>人天</small>";
+  document.getElementById("totalWeeks").textContent = "≈ "+(grand/5).toFixed(1)+" 周(按 5 天/周)";
+  document.getElementById("factorBadge").textContent = "画像:"+PROFILES[profileSel.value].name;
+
+  // 构成条
+  const bar = document.getElementById("compBar");
+  const leg = document.getElementById("compLegend");
+  bar.innerHTML=""; leg.innerHTML="";
+  if(adj>0){
+    Object.entries(catTotals).forEach(([cat,v])=>{
+      if(v<=0)return;
+      const seg=document.createElement("div");
+      seg.style.width=(v/adj*100)+"%"; seg.style.background=CAT_COLORS[cat];
+      seg.title=CATS[cat]+" "+fmt(v)+" 天";
+      bar.appendChild(seg);
+      const li=document.createElement("span");
+      li.innerHTML=`<i style="background:${CAT_COLORS[cat]}"></i>${CATS[cat]} ${fmt(v)}`;
+      leg.appendChild(li);
+    });
+  }
+}
+renderItems();
+</script>
+</body>
+</html>
