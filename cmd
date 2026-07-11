@@ -1,15 +1,17 @@
-async function onFormLoad(executionContext) {
+function onFormLoad(executionContext) {
     var formContext = executionContext.getFormContext();
     Ripple.Utils.NotificationHelper.init(formContext, "en");
 
-    const confirmed = await Ripple.Utils.NotificationHelper.confirm(
-        "Do you want to proceed?",
-        "Confirm Action"
-    );
+    formContext.data.entity.addOnSave(function (econtext) {
+        econtext.getEventArgs().preventDefault(); // 拦住默认保存，不让原生弹窗出现
+        handleSave(formContext);
+    });
+}
 
-    if (confirmed) {
-        Ripple.Utils.NotificationHelper.showFormMessage("You clicked Yes", "INFO", "confirm_result");
-    } else {
-        Ripple.Utils.NotificationHelper.showFormMessage("You clicked No", "WARNING", "confirm_result");
+async function handleSave(formContext) {
+    try {
+        await formContext.data.save();
+    } catch (error) {
+        await Ripple.Utils.NotificationHelper.handlePluginError(error);
     }
 }
