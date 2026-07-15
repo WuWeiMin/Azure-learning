@@ -1,95 +1,55 @@
-GET [组织URL]/api/data/v9.2/EntityDefinitions?$select=LogicalName&$expand=Attributes($select=LogicalName;$filter=LogicalName eq 'yourfieldname')
+// ============================================================
+// 公式: Case_ProcessGenie_CreateFinalBillSubmission
+// 类型: Process Genie (被动调用,由按钮/JS/流程显式触发)
+// 返回: Boolean (Display Format = Boolean)
+// Hit Policy: 假设默认"命中即停" (建议右键Hit Policy确认)
+// ============================================================
 
+function CreateFinalBillSubmission(incident) {
 
-fetch("/api/data/v9.2/EntityDefinitions?$select=LogicalName&$expand=Attributes($select=LogicalName;$filter=LogicalName eq 'aia_utilizationbalance')")
-  .then(r => r.json())
-  .then(d => {
-    const hits = d.value.filter(e => e.Attributes.length > 0).map(e => e.LogicalName);
-    console.log(`共 ${hits.length} 个表:`, hits);
-  });
-
-https://你的环境.crm5.dynamics.com/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet($select=Options)
-fetch("/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet($select=Options)")
-  .then(r => r.json())
-  .then(d => {
-    d.OptionSet.Options.forEach(o =>
-      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
-  });
-
-
-fetch("/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.MultiSelectPicklistAttributeMetadata?$expand=OptionSet($select=Options)")
-  .then(r => r.json())
-  .then(d => {
-    d.OptionSet.Options.forEach(o =>
-      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
-  });
-
-fetch("/api/data/v9.2/GlobalOptionSetDefinitions(Name='选项集名')")
-  .then(r => r.json())
-  .then(d => {
-    d.Options.forEach(o =>
-      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
-  });
-
-
-const field = 'aia_benefitlimittype';  // 改成你的字段名
-
-fetch(`/api/data/v9.2/EntityDefinitions?$select=LogicalName&$expand=Attributes($select=LogicalName,AttributeType;$filter=LogicalName eq '${field}')`)
-  .then(r => r.json())
-  .then(async d => {
-    const hits = d.value.filter(e => e.Attributes.length > 0);
-    console.log(`字段 ${field} 存在于 ${hits.length} 个实体:`, hits.map(e => e.LogicalName));
-
-    for (const e of hits) {
-      const type = e.Attributes[0].AttributeType; // Picklist 或 Virtual(多选)
-      const metaType = type === 'Picklist'
-        ? 'Microsoft.Dynamics.CRM.PicklistAttributeMetadata'
-        : 'Microsoft.Dynamics.CRM.MultiSelectPicklistAttributeMetadata';
-
-      const res = await fetch(`/api/data/v9.2/EntityDefinitions(LogicalName='${e.LogicalName}')/Attributes(LogicalName='${field}')/${metaType}?$expand=OptionSet($select=Options)`);
-      if (!res.ok) { console.log(e.LogicalName, ': 非picklist类型,跳过'); continue; }
-      const meta = await res.json();
-
-      console.log(`—— ${e.LogicalName} ——`);
-      meta.OptionSet.Options.forEach(o =>
-        console.log('  ', o.Value, '=>', o.Label.UserLocalizedLabel.Label));
+    // ---------- 第4行: 门诊账单 ----------
+    if ( incident.aia_requesttype == {OP-BILL}
+         && HasAllAmendedCompleted() == true          // B列: Snippet,检查所有修正账单已完成
+         && CreateOPFinalBillSubmission() == 'Yes' )  // C列: Snippet,⚠内部实际执行"创建OP最终账单提交记录",返回是否成功
+    {
+        return TRUE;                                  // D列: 返回给调用方
     }
-  });
 
-fetch("/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.MultiSelectPicklistAttributeMetadata?$expand=OptionSet($select=Options)")
-  .then(r => r.json())
-  .then(d => {
-    d.OptionSet.Options.forEach(o =>
-      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
-  });
-
-
-
-fetch("/api/data/v9.2/sdkmessageprocessingsteps?$select=name,filteringattributes,stage,mode&$filter=contains(name,'SetUtilizationBalance')")
-  .then(r => r.json())
-  .then(d => d.value.forEach(s =>
-    console.log(s.name, '| stage:', s.stage, '| filteringattributes:', s.filteringattributes || '(全部字段)')));
-
-
-fetch("/api/data/v9.2/north52_formulas(1677d15b-a4ef-4a5c-a724-aa1caacbb63c)")
-  .then(r => r.json())
-  .then(d => {
-    // 先把所有字段名和值打出来,找存储过滤字段的那个
-    Object.entries(d)
-      .filter(([k, v]) => typeof v === 'string' && v.length > 0 && !k.startsWith('@'))
-      .forEach(([k, v]) => console.log(k, '=>', v.substring(0, 300)));
-  });
-
-(function(){
-  const frames = [window, ...document.querySelectorAll('iframe')].map(f => {
-    try { return f.contentDocument || f.document || document; } catch(e) { return null; }
-  }).filter(Boolean);
-  for (const doc of frames) {
-    const sel = doc.querySelector('#metadataproperty');
-    if (sel) {
-      console.log([...sel.selectedOptions].map(o => o.value + ' => ' + o.text).join('\n'));
-      return;
+    // ---------- 第5行: 住院出院账单 ----------
+    else if ( incident.aia_requesttype == {IP-DISCHARGE}
+              && HasAllAmendedCompleted() == true
+              && CreateIPFinalBillSubmission() == 'Yes' )
+    {
+        return TRUE;
     }
-  }
-  console.log('没找到#metadataproperty,检查frame context');
-})();
+
+    // ---------- 第6行: 住院随访账单 ----------
+    else if ( incident.aia_requesttype == {IP-FUPBILL}
+              && HasAllAmendedCompleted() == true
+              && CreateIPFollowUpFinalBillSubmission() == 'Yes' )
+    {
+        return TRUE;
+    }
+
+    // ---------- 第7行: PR账单 ----------
+    else if ( incident.aia_requesttype == {PR-BILL}
+              && HasAllAmendedCompleted() == true
+              && CreatePRFinalBillSubmission() == 'Yes' )
+    {
+        return TRUE;
+    }
+
+    // ---------- 第8行: MT账单 ----------
+    else if ( incident.aia_requesttype == {MT-BILL}
+              && HasAllAmendedCompleted() == true
+              && CreatedMTFinalBillSubmission() == 'Yes' )
+    {
+        return TRUE;
+    }
+
+    // ---------- 第10行: 兜底(所有条件列为空 = 无条件命中) ----------
+    else
+    {
+        return FALSE;    // 请求类型不在上述5种,或修正账单未完成,或创建失败
+    }
+}
