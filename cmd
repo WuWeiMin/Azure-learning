@@ -80,3 +80,16 @@ fetch("/api/data/v9.2/north52_formulas(1677d15b-a4ef-4a5c-a724-aa1caacbb63c)")
       .forEach(([k, v]) => console.log(k, '=>', v.substring(0, 300)));
   });
 
+(function(){
+  const frames = [window, ...document.querySelectorAll('iframe')].map(f => {
+    try { return f.contentDocument || f.document || document; } catch(e) { return null; }
+  }).filter(Boolean);
+  for (const doc of frames) {
+    const sel = doc.querySelector('#metadataproperty');
+    if (sel) {
+      console.log([...sel.selectedOptions].map(o => o.value + ' => ' + o.text).join('\n'));
+      return;
+    }
+  }
+  console.log('没找到#metadataproperty,检查frame context');
+})();
