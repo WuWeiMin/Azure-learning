@@ -9,3 +9,24 @@ fetch("/api/data/v9.2/EntityDefinitions?$select=LogicalName&$expand=Attributes($
   });
 
 https://你的环境.crm5.dynamics.com/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet($select=Options)
+fetch("/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet($select=Options)")
+  .then(r => r.json())
+  .then(d => {
+    d.OptionSet.Options.forEach(o =>
+      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
+  });
+
+
+fetch("/api/data/v9.2/EntityDefinitions(LogicalName='aia_ebplan')/Attributes(LogicalName='aia_benefitlimittype')/Microsoft.Dynamics.CRM.MultiSelectPicklistAttributeMetadata?$expand=OptionSet($select=Options)")
+  .then(r => r.json())
+  .then(d => {
+    d.OptionSet.Options.forEach(o =>
+      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
+  });
+
+fetch("/api/data/v9.2/GlobalOptionSetDefinitions(Name='选项集名')")
+  .then(r => r.json())
+  .then(d => {
+    d.Options.forEach(o =>
+      console.log(o.Value, '=>', o.Label.UserLocalizedLabel.Label));
+  });
