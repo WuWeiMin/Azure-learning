@@ -1,13 +1,22 @@
-import powerApps from "@microsoft/eslint-plugin-power-apps";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
     {
-        files: ["**/*.ts", "**/*.tsx"],
-        plugins: {
-            "@microsoft/power-apps": powerApps,
-        },
-        rules: {
-            ...powerApps.configs.recommended.rules,
-        },
+        ignores: [
+            "**/node_modules/**",
+            "**/out/**",
+            "**/generated/**"
+        ]
     },
+    {
+        files: ["**/*.ts", "**/*.tsx"],
+        languageOptions: {
+            parser: tsParser,
+            parserOptions: {
+                ecmaVersion: "latest",
+                sourceType: "module"
+            }
+        },
+        rules: {}
+    }
 ];
