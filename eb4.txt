@@ -1,0 +1,6 @@
+Normal Assessment
+├── Need More Information → Deferment
+├── Amount Question → AUC
+├── Declined → Appeal
+├── Wrong Request → Cancellation
+└── Closed Result Needs Correction → Reopen
