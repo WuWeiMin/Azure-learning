@@ -1,0 +1,374 @@
+IB（Individual Business，个人保险）
+│
+├── 1. 个人保险基础结构
+│   │
+│   ├── 1.1 Contact 客户／个人
+│   │   ├── 保单持有人 Policyholder
+│   │   ├── 被保人 Insured
+│   │   └── 实际就医患者 Patient
+│   │
+│   ├── 1.2 IB Policy 个人保单
+│   │   ├── Policy Number 保单号码
+│   │   ├── Policy Status 保单状态
+│   │   ├── Effective Date 生效日期
+│   │   ├── Premium Paid Date 保费缴付日期
+│   │   ├── Outstanding Premium 欠缴保费
+│   │   ├── Cash Value 现金价值
+│   │   └── Cashless Eligibility 直付资格
+│   │
+│   ├── 1.3 Policy Profile 保单业务档案
+│   │   ├── 连接 Contact 与 IB Policy
+│   │   ├── 汇总当前保单信息
+│   │   ├── 汇总计划和保障
+│   │   └── 作为业务人员查看保单详情的入口
+│   │
+│   ├── 1.4 IB Policy Plan 基础保险计划
+│   │   ├── 保单持有的主要计划
+│   │   ├── 关联 IB Plan Code
+│   │   └── 决定主要保障范围
+│   │
+│   ├── 1.5 IB Top-Up Plan 附加／补充计划
+│   │   ├── 在基础计划上增加保障
+│   │   └── 与住院流程中的 Top-Up Request 不是同一个概念
+│   │
+│   ├── 1.6 IB Health Reward 健康奖励
+│   │   ├── 与个人保单关联
+│   │   └── 具体奖励计算规则尚未从流程图中展开
+│   │
+│   └── 1.7 Plan 与 Benefit 结构
+│       ├── IB Plan Code 个人计划代码
+│       ├── IB Plan Benefit Code 计划保障代码
+│       └── IB Benefit Code 标准保障代码
+│
+├── 2. 医疗服务参与方
+│   │
+│   ├── 2.1 Patient 患者
+│   │   └── 当前接受医疗服务的个人被保人
+│   │
+│   ├── 2.2 Provider 医疗服务机构
+│   │   ├── Hospital 医院
+│   │   ├── Clinic 诊所
+│   │   └── 其他医疗服务机构
+│   │
+│   ├── 2.3 Doctor 医生
+│   │   ├── 所属医院
+│   │   ├── Main Specialty 主专科
+│   │   └── Sub-specialty 子专科
+│   │
+│   └── 2.4 Provider Portal 医疗机构门户
+│       ├── 查询患者
+│       ├── 查看个人保单
+│       ├── 提交医疗请求
+│       ├── 回复补件
+│       ├── 提交账单
+│       ├── 查看结果
+│       └── 下载相关文件
+│
+├── 3. IB Patient Search 患者查询
+│   │
+│   ├── 3.1 选择保险类型
+│   │   └── Individual / IB
+│   │
+│   ├── 3.2 Patient Search
+│   │   ├── Patient Name
+│   │   ├── Identification Number
+│   │   ├── Policy Number
+│   │   └── 其他个人搜索条件
+│   │
+│   ├── 3.3 保单资格校验
+│   │   ├── Policy Active?
+│   │   ├── Active Plan Code?
+│   │   └── Cashless Facilities?
+│   │
+│   ├── 3.4 医疗网络判断
+│   │   └── Within PHN?
+│   │       ├── Yes → 允许查看保单详情
+│   │       └── No → 显示提示信息
+│   │
+│   └── 3.5 查询结果
+│       ├── 无有效保单 → No active member found
+│       └── 找到有效保单
+│           ├── Display Patient List
+│           ├── Display Eye Icon
+│           └── Display Policy Details
+│
+├── 4. IB Request Submission Eligibility 请求创建资格
+│   │
+│   ├── 4.1 Waiting Period 等待期
+│   │   ├── Within Waiting Period?
+│   │   ├── 等待期内通常限制疾病相关保障
+│   │   └── Accident-related Conditions 可能属于例外
+│   │
+│   ├── 4.2 Hospital Acceptance
+│   │   ├── 向医院提示等待期内仅承保意外相关情况
+│   │   └── Hospital Agrees?
+│   │
+│   ├── 4.3 Premium Status 保费状态
+│   │   ├── 检查 Premium Paid Date
+│   │   ├── 判断欠费是否超过30天
+│   │   └── 欠费时间可能影响请求资格
+│   │
+│   ├── 4.4 Cash Value 现金价值
+│   │   ├── Has Cash Value?
+│   │   ├── 判断现金价值是否可用
+│   │   └── Cash Value Sufficient to Cover
+│   │       Outstanding Premium?
+│   │
+│   ├── 4.5 Utilization Balance
+│   │   ├── 检查剩余可用保障额度
+│   │   └── 余额不足则停止请求
+│   │
+│   ├── 4.6 Co-share / Deductible
+│   │   ├── Co-share 共付比例
+│   │   ├── Deductible 免赔额
+│   │   ├── 提示患者需自行承担的金额
+│   │   └── Patient Agrees?
+│   │
+│   └── 4.7 资格通过
+│       └── Go to New Request Form
+│
+├── 5. IB 医疗请求分类
+│   │
+│   ├── 5.1 Inpatient 住院请求
+│   │   ├── Admission / GL 类请求
+│   │   ├── 等待期校验
+│   │   ├── 保费与现金价值校验
+│   │   ├── 保障余额校验
+│   │   ├── 审核与 GL 决策
+│   │   └── 后续出院及账单处理
+│   │
+│   ├── 5.2 Outpatient 门诊请求
+│   │   ├── New Visit 新门诊
+│   │   ├── Follow-Up Visit 复诊
+│   │   ├── Medication 药物
+│   │   ├── Medical Check-Up 体检
+│   │   ├── Health Screening 健康筛查
+│   │   └── OP Bill 门诊账单
+│   │
+│   └── 5.3 Procedural Request 医疗操作请求
+│       ├── 文档中部分 Procedural 流程标明只适用于 EB
+│       └── 因此具体哪些 Procedure 可用于 IB，
+│           仍需以后结合产品配置确认
+│
+├── 6. IB Inpatient 住院业务框架
+│   │
+│   ├── 6.1 Admission / Initial GL 入院授权
+│   │   ├── 医院提交住院请求
+│   │   ├── 创建医疗请求
+│   │   ├── 进入自动或人工审核
+│   │   ├── Approved → 生成 GL
+│   │   └── Declined → 拒绝并可进入 Appeal
+│   │
+│   ├── 6.2 Treatment Period 住院治疗期间
+│   │   ├── 可能发生费用增加
+│   │   ├── 可能发生治疗项目变化
+│   │   ├── 可能需要补件
+│   │   └── 具体 Additional GL／Top-Up 是否完全
+│   │       按 EB 相同结构处理，现有资料未完全展开
+│   │
+│   ├── 6.3 Discharge 出院阶段
+│   │   ├── 医院提交费用信息
+│   │   ├── 医疗与费用审核
+│   │   ├── AUC 如有金额疑问
+│   │   ├── Generate Draft GL
+│   │   └── Generate Final GL
+│   │
+│   ├── 6.4 Bill 账单阶段
+│   │   ├── Bill Submission
+│   │   ├── Amended Bill
+│   │   ├── Final Bill
+│   │   └── 金额与批准金额匹配
+│   │
+│   └── 6.5 Completion 完成
+│       ├── 更新关联请求状态
+│       ├── 更新后端理赔记录
+│       └── Claim Completed / Closed
+│
+├── 7. IB Outpatient 门诊业务
+│   │
+│   ├── 7.1 门诊请求入口
+│   │   ├── New Visit
+│   │   ├── Follow-Up Visit
+│   │   ├── Medication
+│   │   ├── Medical Check-Up
+│   │   └── Health Screening
+│   │
+│   ├── 7.2 门诊请求处理
+│   │   ├── Create Request
+│   │   ├── STP 自动审核
+│   │   ├── QMS 队列分配
+│   │   ├── Manual Assessment
+│   │   └── Deferment if Required
+│   │
+│   ├── 7.3 决策结果
+│   │   ├── Approved
+│   │   │   ├── Generate Draft GL
+│   │   │   ├── Generate LOG Number
+│   │   │   └── 激活医疗授权
+│   │   └── Declined
+│   │       ├── Decline Reason
+│   │       ├── Decline Letter
+│   │       └── Appeal
+│   │
+│   └── 7.4 门诊账单
+│       ├── OP Bill Submission
+│       ├── OP Amended Bill
+│       ├── OP Final Bill Submission
+│       ├── AUC if Required
+│       ├── Compare Presented / Final Amount
+│       └── Final GL / Completion
+│
+├── 8. Assessment & Decision 审核与决策
+│   │
+│   ├── 8.1 STP 自动审核
+│   │   ├── 根据预设规则判断
+│   │   ├── 符合条件可自动批准
+│   │   └── 不符合条件转人工审核
+│   │
+│   ├── 8.2 QMS 队列管理
+│   │   ├── 生成 Queue Number
+│   │   ├── 识别优先级
+│   │   ├── 分配 Assessor
+│   │   ├── 判断 Assessor Availability
+│   │   └── 补件返回原 Assessor
+│   │
+│   ├── 8.3 Manual Assessment 人工审核
+│   │   ├── 检查个人保单状态
+│   │   ├── 检查 Plan 与 Benefit
+│   │   ├── 检查等待期
+│   │   ├── 检查保费状态
+│   │   ├── 检查 Cash Value
+│   │   ├── 检查医疗必要性
+│   │   └── 检查费用合理性
+│   │
+│   ├── 8.4 Deferment 补件
+│   │   ├── 向医院请求更多资料
+│   │   ├── 向医生或第三方请求资料
+│   │   ├── Portal 回复补件
+│   │   └── 完成后重新审核
+│   │
+│   ├── 8.5 AUC 金额澄清
+│   │   ├── Amount Under Clarification
+│   │   ├── 针对存在疑问的费用
+│   │   ├── 可向 Provider 提问
+│   │   ├── 可向第三方提问
+│   │   └── 解决后完成费用审核
+│   │
+│   ├── 8.6 Appeal 申诉
+│   │   ├── 对 Declined Request 提出申诉
+│   │   ├── 创建新的 Appeal Request
+│   │   ├── 重新进入 QMS
+│   │   └── 重新进行审核
+│   │
+│   ├── 8.7 Cancellation 取消
+│   │   ├── Cancel Individual Request
+│   │   │   └── 仅取消错误创建的请求
+│   │   └── Cancel Entire Claim
+│   │       ├── 取消整个医疗事件
+│   │       ├── 取消 GL / LOG
+│   │       ├── 取消未完成关联记录
+│   │       └── IB 可能需要在 MCS 中人工取消
+│   │
+│   └── 8.8 Reopen 业务重开
+│       ├── 修正已批准或已解决记录
+│       ├── 修改原有拒绝决定
+│       ├── 保留旧处理历史
+│       ├── 取消旧 GL / Claim 结果
+│       └── 创建新的业务处理周期
+│
+├── 9. GL 与 Claim 结果
+│   │
+│   ├── 9.1 GL 生命周期
+│   │   ├── Draft GL
+│   │   ├── Approved GL
+│   │   ├── Updated GL
+│   │   ├── Final GL
+│   │   └── Declined GL
+│   │
+│   ├── 9.2 Request / Claim 状态
+│   │   ├── Request Received
+│   │   ├── Bill Received
+│   │   ├── Open
+│   │   ├── In Queue
+│   │   ├── Processing Now
+│   │   ├── Deferment Sent
+│   │   ├── Deferment Responded
+│   │   ├── Pending Medical Audit
+│   │   ├── Medical Audit Responded
+│   │   ├── Approved
+│   │   ├── Declined
+│   │   ├── Completed
+│   │   ├── Closed
+│   │   └── Cancelled
+│   │
+│   └── 9.3 IB 后端处理
+│       ├── MCS 偏向 IB Claim Processing
+│       ├── Compass 偏向 IB Provider／Doctor 主数据
+│       ├── 部分失败场景需要人工更新
+│       └── 处理结果同步回 CRM 与 Portal
+│
+├── 10. IB 主数据与集成支持
+│   │
+│   ├── 10.1 Hospital Master
+│   │   ├── IB Hospital Code
+│   │   ├── OneData 校验
+│   │   ├── Return Vendor Code
+│   │   └── Return Address Code
+│   │
+│   ├── 10.2 Doctor Master
+│   │   ├── Doctor Profile
+│   │   ├── Hospital Relationship
+│   │   ├── Main Specialty
+│   │   ├── Sub-specialty
+│   │   ├── IB 数据同步至 Compass
+│   │   └── Backend 返回 Client Code
+│   │
+│   ├── 10.3 Portal User Master
+│   │   ├── Hospital Admin
+│   │   ├── Normal User
+│   │   ├── Create / Update
+│   │   └── Deactivate
+│   │
+│   └── 10.4 Integration
+│       ├── Provider Portal
+│       ├── CRM
+│       ├── MCS
+│       ├── Compass
+│       ├── OneData
+│       └── Notification Services
+│
+└── 11. 沟通与服务支持
+    │
+    ├── 11.1 Notification
+    │   ├── SMS
+    │   ├── Push Notification
+    │   ├── Email
+    │   ├── Patient
+    │   ├── Member
+    │   ├── Spouse
+    │   ├── Child
+    │   ├── Guardian
+    │   └── Agent
+    │
+    ├── 11.2 Contact Centre Call Log
+    │   ├── Patient Search
+    │   ├── 查看 Policy / Case / Claim
+    │   ├── 向来电人提供信息
+    │   └── 保存通话记录
+    │
+    ├── 11.3 Announcement
+    │   ├── 发布公告
+    │   ├── Portal 展示
+    │   └── 阅读追踪
+    │
+    ├── 11.4 Knowledge Library
+    │   ├── 创建文章
+    │   ├── 审核
+    │   ├── 发布
+    │   └── 内部知识支持
+    │
+    └── 11.5 Report Request
+        ├── Provider 选择报表条件
+        ├── 根据 Claim Payment 生成报告
+        ├── Statement of Account
+        └── Portal 下载报告
