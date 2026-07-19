@@ -1,1 +1,9 @@
-a
+flowchart LR
+    A[Provider Portal<br/>医疗机构门户] <--> B[Dynamics 365 CRM AHS<br/>Case/GL/审核/主数据<br/>USD 审核员界面<br/>STP + QMS]
+    B <--> C[Backend 核心系统<br/>EB→G400/MCS<br/>IB→Compass]
+    D[E-Referral 系统<br/>电子转诊平台] <--> E[ESB/集成]
+    E <--> F[OneData<br/>医院主数据校验]
+    A --> D
+    C --> F
+    E --> G[SMS/PN/Email 通知引擎]
+    B <--> E
