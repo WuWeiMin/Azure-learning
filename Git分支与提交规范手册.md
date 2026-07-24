@@ -1,361 +1,113 @@
-# Git 分支管理与提交规范手册
+1.2.3
+│ │ │
+│ │ └── Patch（补丁版本）
+│ └──── Minor（次版本）
+└────── Major（主版本）
 
-**适用范围**：Dynamics 365 / Dataverse 项目（PCF 控件、Plugin、Custom API、Power Automate 等）
-**版本**：v1.0
-**最后更新**：2026-07-24
-
----
+表示：
 
-## 目录
+* 修复 Bug
+* 修复安全漏洞
+* 优化性能
+* 不增加新功能
+* 不影响已有功能（向后兼容）
 
-1. [分支策略总览](#1-分支策略总览)
-2. [分支命名与环境映射](#2-分支命名与环境映射)
-3. [标准开发流程（单需求）](#3-标准开发流程单需求)
-4. [标准开发流程（多需求并行）](#4-标准开发流程多需求并行)
-5. [Conventional Commits 提交规范](#5-conventional-commits-提交规范)
-6. [提交类型详解与示例](#6-提交类型详解与示例)
-7. [Pull Request 规范](#7-pull-request-规范)
-8. [减少 Commit 噪音的实践](#8-减少-commit-噪音的实践)
-9. [常见问题 FAQ](#9-常见问题-faq)
+例如：
 
----
+* 修复登录失败
+* 修复 SQL 查询错误
+* 修复 UI 显示问题
 
-## 1. 分支策略总览
+如果你们团队采用 Conventional Commits，一般对应：
 
-我们采用 **Develop → Feature → Release → Main** 的分支模型，Main 合并后需回merge到 Develop，保持两条主干同步。
+fix(login): prevent null reference exception
 
-```
-develop ──┬──────────────────────────────────────────┬── (回merge)
-          │                                           │
-          ▼                                           │
-     feature/cr1 ──► release/cr1 ──► main ────────────┘
-```
+表示：
 
-核心原则：
+增加新功能，但不会影响以前的代码。
 
-- **`develop`**：所有需求分支的起点，日常集成分支，**禁止直接部署**。
-- **`feature/*` / `bugfix/*`**：单个需求/缺陷的开发分支，从 `develop` 切出。
-- **`release/*`**：UAT 测试分支，从对应的 `feature/*` 通过 PR 创建。
-- **`main`**：生产分支，只接受来自 `release/*` 的 PR。
-- **`hotfix/*`**：紧急生产修复，仅用于 PROD。
-- **`drfix/*`**：灾备（DR）环境专用修复分支。
+例如：
 
-> ⚠️ `main`、`master`、`develop` 均被**禁止直接部署**，任何环境部署都必须通过符合命名规范的分支或 tag 触发。
+* 新增导出 Excel
+* 新增 API
+* 新增一个页面
+* 新增一个 Dataverse Entity
+* 新增一个 PCF 控件
 
----
+已有功能仍然可以正常工作。
 
-## 2. 分支命名与环境映射
+通常对应：
+fix(login): prevent null reference exception
+feat(order): support batch import
 
-分支命名必须**严格匹配**下表规则，命名错误会导致路由到错误环境或流水线校验失败。
 
-| 分支/Tag 模式 | 目标环境 | 说明 |
-|---|---|---|
-| `feature/*` | DEV | 新功能开发 |
-| `bugfix/*` | DEV | 缺陷修复（非生产紧急） |
-| `release/sit*` | SIT | 系统集成测试 |
-| `release/uat*` | UAT | 用户验收测试 |
-| `hotfix/*` | PROD only | 仅生产环境紧急修复 |
-| `drfix/*` | DR only | 仅灾备环境修复（含 PROD 定义下的 `.dr` 目标，待 zh 确认） |
-| `refs/tags/*` | PROD + DR | 已批准的正式发布 tag，可同时部署至生产与灾备 |
+表示：
 
-**重要行为约定：**
+有破坏性变更（Breaking Change）。
 
-- `main`、`master`、`develop` 三个分支**禁止**作为部署来源。
-- 生产环境专项修复 → 使用 `hotfix/*`。
-- 灾备环境专项修复 → 使用 `drfix/*`。
-- 需要**同时**部署到 PROD 和 DR → 使用已批准的 release tag，不要分别用 `hotfix` 和 `drfix`。
-- `release/*` 分支与生产 tag，必须从**已经合入 develop 的 commit**上创建，不能跳过 develop 直接从 feature 拉。
-- 旧的有效 release 分支/tag 可以在需要**回滚（rollback）**时重新运行，不会因为 develop 已经往前推进而失效。
+也就是说：
 
-**命名示例：**
-
-```
-feature/CR1024-add-lookup-pcf
-bugfix/CR1030-fix-plugin-null-ref
-release/sit-2026.07
-release/uat-2026.07
-hotfix/CR1041-prod-workflow-crash
-drfix/CR1042-dr-sync-fix
-```
+升级以后，旧代码可能不能用了，需要修改。
 
----
+例如：
 
-## 3. 标准开发流程（单需求）
+* 删除 API
+* 修改 API 参数
+* 删除数据库字段
+* 修改返回 JSON 结构
+* 删除插件
+* 删除配置项
+* 重构导致旧接口失效
 
-对应「单一增强」流程图（Develop → Feature/cr1 → Release/cr1 → Main → 回merge）：
 
-1. **从 `develop` 切出 feature 分支**，命名如 `feature/cr1-xxx`，开始开发。
-2. 开发完成、准备进入 UAT 时，从 `feature/cr1` 发起 PR，**克隆创建** `release/cr1` 分支。
-3. UAT 期间如有修复：**只在 `feature/cr1` 上改动**，测试通过后再合并回 `release/cr1`。
-4. UAT 全部通过后，从 `release/cr1` 发起 PR 合并到 `main`。
-5. 合并到 `main` 后，**次日**将 `main` 合并回 `develop`，保持两条主干同步。
+feat!: change authentication model
 
-```bash
-# 1. 创建 feature 分支
-git checkout develop
-git pull origin develop
-git checkout -b feature/cr1-add-lookup-pcf
 
-# 2. 开发完成后创建 release 分支（通过 PR，非直接 push）
-#    PR: feature/cr1-add-lookup-pcf -> release/cr1
+1.0.0   第一个正式版本
 
-# 3. UAT 修复只改 feature，再合并回 release
-git checkout feature/cr1-add-lookup-pcf
-# ...修复...
-#    PR: feature/cr1-add-lookup-pcf -> release/cr1
+1.0.1   修复一个Bug
+1.0.2   再修复一个Bug
 
-# 4. UAT 通过后合并到 main
-#    PR: release/cr1 -> main
+1.1.0   新增导出PDF
 
-# 5. 次日回merge 到 develop
-git checkout develop
-git pull origin develop
-git merge origin/main
-git push origin develop
-```
+1.1.1   修复PDF乱码
 
----
+1.2.0   新增邮件通知
 
-## 4. 标准开发流程（多需求并行）
+1.2.1   修复邮件发送失败
 
-当多个需求（cr1、cr2 ...）同时在 `develop` 上并行开发时，流程与单需求一致，但需注意**分支同步**：
+2.0.0   API全部升级，不兼容旧版本
 
-- **cr2 的 feature 分支创建前**，务必先从 `develop` 拉取最新代码（图中步骤 7），避免落后于已合并的 cr1。
-- **cr2 的 release 分支**，从 `feature/cr2` 拉取最新代码后再创建（图中步骤 8）。
-- 每个 CR 各自独立完成「feature → release → main → 回merge develop」的完整闭环，互不干扰。
 
-```bash
-# cr2 开始前，先同步 develop 最新代码（此时 cr1 可能已合并）
-git checkout feature/cr2-xxx
-git pull origin develop        # 或 git rebase origin/develop
+当前版本
 
-# release/cr2 创建前同样先同步 feature/cr2 最新代码
-git checkout release/cr2
-git pull origin feature/cr2-xxx
-```
+新版本
 
-> 💡 **建议**：并行需求越多，越应该缩短每个 CR 的生命周期，尽快合并回 develop，减少分支漂移（drift）和后续冲突成本。
+意味着什么
 
----
+是否通常可以放心升级
 
-## 5. Conventional Commits 提交规范
+1.2.3
 
-采用 [Angular 提交规范](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit) 作为统一标准，格式如下：
+1.2.4
 
-```
-<type>(<scope>): <subject>
-<空一行>
-<body>
-<空一行>
-<footer>
-```
+修 Bug
 
-- **type**：提交类型（见第 6 节），必填。
-- **scope**：影响范围，建议使用模块/组件名，选填但强烈建议填写。
-- **subject**：简短描述，祈使语气、动词开头、不超过 50 字符、结尾不加句号。
-- **body**：详细说明改动动机与实现方式，选填，说明"为什么"而不只是"做了什么"。
-- **footer**：破坏性变更（`BREAKING CHANGE:`）、关联的工作项/CR 编号（`Closes #1024`）。
+✅ 基本可以
 
-**Scope 建议清单**（可结合本团队 D365 项目场景扩展）：
+1.2.3
 
-| Scope | 适用范围 |
-|---|---|
-| `pcf` | PCF 自定义控件 |
-| `plugin` | Dataverse Plugin |
-| `customapi` | Custom API |
-| `flow` | Power Automate 流程 |
-| `webapi` | C# Web API / 集成服务 |
-| `solution` | Solution 打包/导入导出 |
-| `ci` | 流水线/构建脚本 |
-| `deps` | 依赖包 |
+1.3.0
 
----
+新增功能
 
-## 6. 提交类型详解与示例
+✅ 一般可以
 
-### 6.1 `feat` — 新功能
+1.2.3
 
-引入新的功能特性，会触发语义化版本的 **MINOR** 升级。
+2.0.0
 
-```
-feat(pcf): 新增基于 Fluent UI TagPicker 的多源查找控件
+有破坏性修改
 
-支持通过环境变量配置多个数据源，实现跨实体的可配置查找绑定。
+⚠️ 需要评估
 
-Closes #CR1024
-```
-
-```
-feat(flow): 新增审批超时自动升级流程
-
-当审批未在 SLA 时限内完成时，自动升级至上级审批人。
-```
-
-### 6.2 `fix` — 缺陷修复
-
-修复 bug，会触发语义化版本的 **PATCH** 升级。
-
-```
-fix(plugin): 修复 EntityImageCollection 键名大小写不一致导致的空引用异常
-
-PreImage/PostImage 注册名称与代码中读取的 key 大小写不匹配，
-统一改为大小写不敏感比较。
-
-Fixes #CR1030
-```
-
-```
-fix(webapi): 修复 ServiceClient OAuth 连接超时未重试的问题
-```
-
-### 6.3 `docs` — 文档变更
-
-仅文档相关改动，不涉及代码逻辑。
-
-```
-docs(readme): 补充 PCF 控件本地调试环境搭建步骤
-```
-
-```
-docs(pcf): 更新 TagPicker 组件 Input/Output Property 使用说明
-```
-
-### 6.4 `style` — 代码格式
-
-不影响代码逻辑的格式调整（空格、缩进、分号、命名风格等）。
-
-```
-style(plugin): 统一 Plugin 项目代码缩进为 4 空格并移除多余空行
-```
-
-```
-style(pcf): 按 ESLint 规则格式化 TagPicker 组件代码
-```
-
-### 6.5 `refactor` — 重构
-
-既不是修复 bug，也不是新增功能的代码结构调整。
-
-```
-refactor(webapi): 将 Dataverse 连接逻辑抽取为独立的 ServiceClientFactory 类
-
-原先分散在多个 Controller 中重复创建 ServiceClient，
-统一收敛到工厂类，便于后续替换认证方式。
-```
-
-```
-refactor(plugin): 拆分过大的 OnCreateContact 插件为多个职责单一的处理类
-```
-
-### 6.6 `perf` — 性能优化
-
-专门以提升性能为目的的代码改动。
-
-```
-perf(plugin): 使用批量 ExecuteMultipleRequest 替代逐条更新，减少 API 调用次数
-
-原实现对每条记录单独发起 Update 请求，1000 条记录场景下耗时约 90s，
-改为批量请求后降至约 12s。
-```
-
-```
-perf(pcf): 对 TagPicker 下拉列表数据源结果增加本地缓存，减少重复请求
-```
-
-### 6.7 `test` — 测试
-
-新增或修改测试代码，不涉及生产代码逻辑变更。
-
-```
-test(webapi): 补充 ServiceClient 连接失败场景的单元测试
-```
-
-```
-test(plugin): 为 OnCreateContact 插件新增 PreImage 缺失场景的边界测试
-```
-
-### 6.8 `build` — 构建系统 / 外部依赖
-
-影响构建系统或外部依赖（NuGet、npm 等）的改动。
-
-```
-build(deps): 将 Plugin 项目迁移为 SDK 风格 .csproj，目标框架保持 .NET Framework 4.6.2
-```
-
-```
-build(pcf): 升级 pcf-scripts 与相关 npm 依赖至最新稳定版本
-```
-
-### 6.9 `ci` — 持续集成
-
-CI/CD 配置文件或脚本的改动。
-
-```
-ci(pipeline): 新增 release/sit* 分支自动触发 SIT 环境部署的流水线规则
-```
-
-```
-ci(pipeline): 修复分支命名校验规则未拦截 drfix 与 hotfix 混用的问题
-```
-
-### 6.10 `chore` — 杂项
-
-不影响 src 或测试文件的日常维护性变更（如构建工具配置、依赖版本号维护等），Angular 规范中常与 `build` 并列使用。
-
-```
-chore(solution): 更新 Solution 版本号至 1.4.2.0
-```
-
-```
-chore(deps): 清理未使用的 NuGet 包引用
-```
-
-### 6.11 `revert` — 回退提交
-
-撤销此前的某次提交。
-
-```
-revert: feat(flow): 新增审批超时自动升级流程
-
-This reverts commit a1b2c3d.
-原因：该流程在 UAT 中触发了重复审批通知，暂时回退待修复后重新上线。
-```
-
-### 6.12 破坏性变更（Breaking Change）
-
-任何类型都可能携带破坏性变更，需在 footer 中用 `BREAKING CHANGE:` 明确标注，会触发语义化版本的 **MAJOR** 升级。
-
-```
-feat(customapi): 重构 GetCustomerSummary Custom API 入参结构
-
-BREAKING CHANGE: 入参 CustomerId 类型由 string 改为 Guid，
-调用方需同步更新序列化逻辑。
-```
-
----
-
-## 7. Pull Request 规范
-
-- PR 标题建议沿用 Conventional Commits 格式，如：`feat(pcf): 新增多源查找控件`。
-- PR 描述中应包含：变更目的、关联 CR/工作项编号、测试方式、是否有破坏性变更。
-- `release/*` → `main` 的 PR，必须附上 UAT 测试通过证据（截图/测试记录链接）。
-- 所有针对受保护分支（`main`、`develop`、`release/*`）的合并，禁止直接 push，一律走 PR + Review。
-
----
-
-## 8. 常见问题 FAQ
-
-**Q1：UAT 期间发现 bug，能不能直接改 release 分支？**
-不可以。所有修复必须在对应的 `feature/*` 分支上进行，测试通过后再合并回 `release/*`，保证 feature 分支始终是唯一的代码真源（source of truth）。
-
-**Q2：release 分支能不能跳过 develop，直接从别的 feature 分支拉代码？**
-不可以。`release/*` 只能从已经合入 `develop` 的 commit 上创建，保证发布内容可追溯。
-
-**Q3：生产出现紧急问题，应该走哪个分支？**
-仅影响 PROD → 使用 `hotfix/*`；仅影响 DR → 使用 `drfix/*`；同时影响 PROD 和 DR → 使用已批准的正式 release tag，不要分别走两个分支。
-
-**Q4：main 合并后多久需要回 merge 到 develop？**
-按约定为合并后的**次日**完成回merge，避免 develop 长期落后于 main。
-
-**Q5：commit type 应该选 `fix` 还是 `bugfix`？**
-Conventional Commits 中固定类型为 `fix`（无论对应分支叫 `bugfix/*` 还是 `hotfix/*`），分支命名规则与 commit type 是两套独立体系，不要混用。
