@@ -1,0 +1,2 @@
+https://[你的环境].crm.dynamics.com/api/data/v9.2/solutioncomponents?$filter=_solutionid_value eq [上面拿到的solutionid]
+https://[你的环境].crm.dynamics.com/api/data/v9.2/solutions?$filter=uniquename eq 'YourSolutionName'&$select=solutionid
