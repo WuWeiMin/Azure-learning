@@ -1,2 +1,151 @@
-https://[你的环境].crm.dynamics.com/api/data/v9.2/solutioncomponents?$filter=_solutionid_value eq [上面拿到的solutionid]
-https://[你的环境].crm.dynamics.com/api/data/v9.2/solutions?$filter=uniquename eq 'YourSolutionName'&$select=solutionid
+/* ============================================================
+   Dynamics 365 解决方案组件导出脚本
+   使用方法：
+   1. 在浏览器里打开你的CRM应用页面（例如 main.aspx，不是裸API页面）
+   2. 按 F12 打开开发者工具 -> Console(控制台)
+   3. 把 SOLUTION_UNIQUE_NAME 改成你的solution名字（如 AIAXRPSLN_2607_1）
+   4. 把整段代码粘贴进控制台，回车运行
+   5. 运行完会自动打印分组结果，并弹出CSV文件下载
+   ============================================================ */
+
+(async function () {
+  const SOLUTION_UNIQUE_NAME = "AIAXRPSLN_2607_1"; // <-- 改成你的solution唯一名
+
+  const apiBase = window.location.origin + "/api/data/v9.2";
+
+  // componenttype 编号 -> 中文名 + 用于反查名称的实体集/字段
+  const TYPE_MAP = {
+    1: { name: "Entity(表)", set: "EntityDefinitions", idField: "MetadataId", nameField: "LogicalName", isMetadata: true },
+    2: { name: "Attribute(字段)" }, // 需要实体上下文，跳过反查
+    3: { name: "Relationship(内部)" },
+    9: { name: "OptionSet(选项集)", set: "GlobalOptionSetDefinitions", idField: "MetadataId", nameField: "Name", isMetadata: true },
+    10: { name: "EntityRelationship(关系)" },
+    20: { name: "Role(安全角色)", set: "roles", nameField: "name" },
+    24: { name: "Form(内部)" },
+    26: { name: "SavedQuery(视图)", set: "savedqueries", nameField: "name" },
+    29: { name: "Workflow(流程)", set: "workflows", nameField: "name" },
+    31: { name: "Report(报表)", set: "reports", nameField: "name" },
+    36: { name: "EmailTemplate(邮件模板)", set: "templates", nameField: "title" },
+    59: { name: "Chart(图表)", set: "savedqueryvisualizations", nameField: "name" },
+    60: { name: "SystemForm(窗体)", set: "systemforms", nameField: "name" },
+    61: { name: "WebResource(Web资源)", set: "webresourceset", nameField: "name" },
+    62: { name: "SiteMap(站点地图)", set: "sitemaps", nameField: "sitemapnameunique" },
+    63: { name: "ConnectionRole(连接角色)", set: "connectionroles", nameField: "name" },
+    65: { name: "HierarchyRule(层级规则)", set: "hierarchyrules", nameField: "name" },
+    70: { name: "FieldSecurityProfile(字段安全)", set: "fieldsecurityprofiles", nameField: "name" },
+    80: { name: "AppModule(模型驱动应用)", set: "appmodules", nameField: "name" },
+    90: { name: "PluginType(插件类型)", set: "plugintypes", nameField: "name" },
+    91: { name: "PluginAssembly(插件程序集)", set: "pluginassemblies", nameField: "name" },
+    92: { name: "SDKMessageProcessingStep(插件步骤)", set: "sdkmessageprocessingsteps", nameField: "name" },
+    93: { name: "SDKMessageProcessingStepImage(插件步骤映像)", set: "sdkmessageprocessingstepimages", nameField: "name" },
+    95: { name: "ServiceEndpoint(服务终结点)", set: "serviceendpoints", nameField: "name" },
+    152: { name: "SLA", set: "slas", nameField: "name" },
+    161: { name: "MobileOfflineProfile", set: "mobileofflineprofiles", nameField: "name" },
+  };
+
+  function typeInfo(t) {
+    return TYPE_MAP[t] || { name: `未知类型(${t})` };
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url, {
+      headers: { "OData-MaxVersion": "4.0", "OData-Version": "4.0", Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`${res.status} ${url}`);
+    return res.json();
+  }
+
+  console.log("正在解析 solution id ...");
+  const solResp = await getJson(
+    `${apiBase}/solutions?$filter=uniquename eq '${SOLUTION_UNIQUE_NAME}'&$select=solutionid,friendlyname`
+  );
+  if (!solResp.value.length) {
+    console.error("找不到该solution，请检查 SOLUTION_UNIQUE_NAME 是否正确");
+    return;
+  }
+  const solutionId = solResp.value[0].solutionid;
+  console.log(`找到 solution: ${solResp.value[0].friendlyname} (${solutionId})`);
+
+  // 分页拉取所有 solutioncomponents
+  let url = `${apiBase}/solutioncomponents?$filter=_solutionid_value eq ${solutionId}&$select=objectid,componenttype,rootcomponentbehavior`;
+  let all = [];
+  while (url) {
+    const page = await getJson(url);
+    all = all.concat(page.value);
+    url = page["@odata.nextLink"] || null;
+  }
+  console.log(`共拉取到 ${all.length} 个组件，正在分组并反查名称...`);
+
+  // 按 componenttype 分组
+  const groups = {};
+  for (const c of all) {
+    (groups[c.componenttype] = groups[c.componenttype] || []).push(c);
+  }
+
+  // 反查名称（并发限制，避免一次性打过多请求）
+  async function resolveNames(list, info) {
+    if (!info.set) return list.map((c) => ({ ...c, resolvedName: "(未反查)" }));
+    const chunkSize = 15;
+    const results = [];
+    for (let i = 0; i < list.length; i += chunkSize) {
+      const chunk = list.slice(i, i + chunkSize);
+      const promises = chunk.map(async (c) => {
+        try {
+          let q;
+          if (info.isMetadata) {
+            q = `${apiBase}/${info.set}(${info.idField}=${c.objectid})?$select=${info.nameField}`;
+          } else {
+            q = `${apiBase}/${info.set}(${c.objectid})?$select=${info.nameField}`;
+          }
+          const d = await getJson(q);
+          return { ...c, resolvedName: d[info.nameField] || "(空)" };
+        } catch (e) {
+          return { ...c, resolvedName: "(反查失败，可能已被删除)" };
+        }
+      });
+      results.push(...(await Promise.all(promises)));
+    }
+    return results;
+  }
+
+  const finalRows = [];
+  for (const [type, list] of Object.entries(groups)) {
+    const info = typeInfo(Number(type));
+    const resolved = await resolveNames(list, info);
+    resolved.forEach((r) =>
+      finalRows.push({
+        类型编号: type,
+        类型名称: info.name,
+        名称: r.resolvedName,
+        ObjectId: r.objectid,
+        RootComponentBehavior: r.rootcomponentbehavior,
+      })
+    );
+  }
+
+  // 按类型分组打印
+  console.log("========== 按类型分组统计 ==========");
+  const summary = {};
+  finalRows.forEach((r) => (summary[r.类型名称] = (summary[r.类型名称] || 0) + 1));
+  console.table(summary);
+
+  console.log("========== 明细 ==========");
+  console.table(finalRows);
+
+  // 生成 CSV 并下载
+  const headers = ["类型编号", "类型名称", "名称", "ObjectId", "RootComponentBehavior"];
+  const csvRows = [headers.join(",")];
+  finalRows.forEach((r) => {
+    csvRows.push(
+      headers.map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(",")
+    );
+  });
+  const csvContent = "\uFEFF" + csvRows.join("\n"); // BOM解决中文乱码
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${SOLUTION_UNIQUE_NAME}_components.csv`;
+  link.click();
+
+  console.log("完成！CSV已自动下载。");
+})();
