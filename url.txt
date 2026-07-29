@@ -15,6 +15,12 @@
      所属Entity组件，间接定位表名，再反查出"表名.字段名"
      （仅覆盖直接挂在Entity下的字段；其余metadata子组件类型
      如AttributePicklistValue、ViewAttribute等暂不支持，仍标"暂不支持反查"）
+   - SavedQuery(视图)、SystemForm(窗体)、Chart 这几类本身自带
+     所属表字段(returnedtypecode/objecttypecode/primaryentitytypecode)，
+     反查时一并带出，显示为"表名.视图名"/"表名.窗体名"
+   - 新增"显示名称"列：Entity(表)、OptionSet(选项集)、Attribute(字段)
+     这几类LogicalName和DisplayName是两个概念，一并查出DisplayName；
+     其余类型本身"名称"就是显示名称，此列留空
    - 只导出一份"真实清单"CSV
 
    使用方法：CRM/PowerApps 应用页面 -> F12控制台 -> 改solution名 -> 粘贴运行
@@ -29,8 +35,8 @@
   // 没列在这里的类型，仍然会从componenttype选项集拿到正确的"类型名称"，
   // 只是"名称"这一列会标注"暂不支持反查"，而不是报错或误判。
   const RESOLVE_MAP = {
-    1: { set: "EntityDefinitions", nameField: "LogicalName" },
-    9: { set: "GlobalOptionSetDefinitions", nameField: "Name" },
+    1: { set: "EntityDefinitions", nameField: "LogicalName", hasDisplayName: true },
+    9: { set: "GlobalOptionSetDefinitions", nameField: "Name", hasDisplayName: true },
     10: { set: "RelationshipDefinitions", nameField: "SchemaName" },
     20: { set: "roles", nameField: "name" },
     26: { set: "savedqueries", nameField: "name", parentField: "returnedtypecode" },
@@ -94,6 +100,12 @@
     return TYPE_NAME_MAP[t] || `未在选项集中定义(${t})`;
   }
 
+  // Entity/OptionSet/Attribute 这类metadata对象，LogicalName和DisplayName是两个概念，
+  // DisplayName是个Label复杂类型，需要从 UserLocalizedLabel.Label 里取
+  function extractLabel(labelObj) {
+    return (labelObj && labelObj.UserLocalizedLabel && labelObj.UserLocalizedLabel.Label) || "";
+  }
+
   console.log("正在解析 solution id ...");
   const solResp = await getJson(
     `${apiBase}/solutions?$filter=uniquename eq '${SOLUTION_UNIQUE_NAME}'&$select=solutionid,friendlyname`
@@ -121,11 +133,12 @@
 
   async function resolveNames(list, mapEntry) {
     if (!mapEntry) {
-      return list.map((c) => ({ ...c, resolvedName: "(暂不支持反查)", resolveStatus: "暂不支持反查" }));
+      return list.map((c) => ({ ...c, resolvedName: "(暂不支持反查)", resolveStatus: "暂不支持反查", displayName: "" }));
     }
-    const selectFields = mapEntry.parentField
-      ? `${mapEntry.nameField},${mapEntry.parentField}`
-      : mapEntry.nameField;
+    const extraFields = [];
+    if (mapEntry.parentField) extraFields.push(mapEntry.parentField);
+    if (mapEntry.hasDisplayName) extraFields.push("DisplayName");
+    const selectFields = [mapEntry.nameField, ...extraFields].join(",");
     const chunkSize = 5;
     const results = [];
     for (let i = 0; i < list.length; i += chunkSize) {
@@ -137,12 +150,14 @@
           const prefixedName = mapEntry.parentField && d[mapEntry.parentField]
             ? `${d[mapEntry.parentField]}.${baseName}`
             : baseName;
-          return { ...c, resolvedName: prefixedName, resolveStatus: "成功" };
+          const displayName = mapEntry.hasDisplayName ? extractLabel(d.DisplayName) : "";
+          return { ...c, resolvedName: prefixedName, resolveStatus: "成功", displayName };
         } catch (e) {
           return {
             ...c,
             resolvedName: `(反查失败: ${e.message})`,
             resolveStatus: "失败(疑似孤儿引用/对象已删除)",
+            displayName: "",
           };
         }
       });
@@ -171,22 +186,25 @@
             ...c,
             resolvedName: "(无法定位所属表)",
             resolveStatus: "失败(找不到父级Entity组件，无法定位所属表)",
+            displayName: "",
           };
         }
         try {
           const d = await getJson(
-            `${apiBase}/EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes(${c.objectid})?$select=LogicalName`
+            `${apiBase}/EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes(${c.objectid})?$select=LogicalName,DisplayName`
           );
           return {
             ...c,
             resolvedName: `${entityLogicalName}.${d.LogicalName}`,
             resolveStatus: "成功",
+            displayName: extractLabel(d.DisplayName),
           };
         } catch (e) {
           return {
             ...c,
             resolvedName: `(反查失败: ${e.message})`,
             resolveStatus: "失败(疑似孤儿引用/字段已删除)",
+            displayName: "",
           };
         }
       });
@@ -211,6 +229,7 @@
         类型编号: String(entityType),
         类型名称: typeName(entityType),
         名称: r.resolvedName,
+        显示名称: r.displayName || "",
         反查状态: r.resolveStatus,
         IsMetadata: r.ismetadata,
         ObjectId: r.objectid,
@@ -235,6 +254,7 @@
         类型编号: type,
         类型名称: typeName(typeNum),
         名称: r.resolvedName,
+        显示名称: r.displayName || "",
         反查状态: r.resolveStatus,
         IsMetadata: r.ismetadata,
         ObjectId: r.objectid,
@@ -261,7 +281,7 @@
   console.table(finalRows);
 
   function downloadCsv(rows, filename) {
-    const headers = ["类型编号", "类型名称", "名称", "反查状态", "IsMetadata", "ObjectId", "RootComponentBehavior"];
+    const headers = ["类型编号", "类型名称", "名称", "显示名称", "反查状态", "IsMetadata", "ObjectId", "RootComponentBehavior"];
     const csvRows = [headers.join(",")];
     rows.forEach((r) => {
       csvRows.push(headers.map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(","));
