@@ -1,3 +1,8 @@
+
+https://<你的环境>.crm.dynamics.com/api/data/v9.2/plugintypes(888de004-1106-485e-ae83-0af7eb07da14)?$select=name,typename,friendlyname,assemblyname
+
+
+
 /* ============================================================
    Dynamics 365 解决方案组件导出脚本
    使用方法：
