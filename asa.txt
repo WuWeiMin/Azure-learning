@@ -1,0 +1,1 @@
+/api/data/v9.2/pluginassemblies?$select=name,pluginassemblyid&$filter=name eq 'Company.CRM.Plugins'
