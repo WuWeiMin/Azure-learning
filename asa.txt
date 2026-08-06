@@ -1,18 +1,9 @@
-TENANT_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-g="${TENANT_ID//-/}"
-
-hex="${g:6:2}${g:4:2}${g:2:2}${g:0:2}"
-hex+="${g:10:2}${g:8:2}"
-hex+="${g:14:2}${g:12:2}"
-hex+="${g:16:16}"
-
-encodedTenantId=$(
-    printf '%s' "$hex" |
-    xxd -r -p |
-    base64 |
-    tr '+/' '-_' |
-    tr -d '=\r\n'
-)
-
-echo "$encodedTenantId"
+openssl pkcs12 \
+-in plugin.pfx \
+-clcerts \
+-nokeys \
+-passin pass:你的PFX密码 |
+openssl x509 \
+-noout \
+-subject \
+-issuer
